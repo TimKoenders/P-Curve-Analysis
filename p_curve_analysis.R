@@ -6,8 +6,7 @@
 # as .PNG files on the same folder as where you put the .txt file. 
 
 
-# Header ------------------------------------------------------------------
-
+# Clean_up and packages ------------------------------------------------------------------
 rm(list = ls())
 gc()
 
@@ -19,6 +18,8 @@ pacman::p_load(
   scales
 )
 
+
+# Set your working directory ----------------------------------------------
 setwd("C:\\Users\\koend\\OneDrive\\Bureaublad\\WU 2023-2024\\Institute_Cognition\\P-curve analysis\\Routput")
 
 
@@ -39,7 +40,7 @@ p_values_vector <- d$p_value
 p_values_df <- data.frame(p_value = p_values_vector)
 
 # Generate the output filename 
-output_filename <- "p_values_output.csv"
+output_filename <- "p_curve_analysis"
 
 
 # P_curve analysis --------------------------------------------------------
