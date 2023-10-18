@@ -38,9 +38,8 @@ d <- df %>%
 p_values_vector <- d$p_value
 p_values_df <- data.frame(p_value = p_values_vector)
 
-# Generate the output filename based on the input file name
-input_filename <- "p_values.csv"  # Replace with the correct file name
-output_filename <- sub(".csv", "", input_filename)
+# Generate the output filename 
+output_filename <- "p_values_output.csv"
 
 
 # P_curve analysis --------------------------------------------------------
