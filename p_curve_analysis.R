@@ -1,12 +1,28 @@
-# Introduction ------------------------------------------------------------
-# This is the R Code behind the p-curve app 4.052
-# Written by Uri Simonsohn (urisohn@gmail.com) / Adapted by Tim Koenders (tim.koenders@wu.ac.at)
-# To run it you need to store the p-values in a column vector in a csv
-# Then, you just run the function on that file. The app generates various text files with the results in table format and saves the figures 
-# as .PNG files on the same folder as where you put the .txt file. 
+# This is the R Code behind the p-curve app 4.052 (see https://p-curve.com/index.html)
+# Written by Uri Simonsohn (urisohn@gmail.com) 
+# Adapted by Tim Koenders (tim.koenders@wu.ac.at)
+
+# Introduction:
+# This R script is designed for conducting P-curve analysis, a statistical technique used in research to assess the presence of evidential value in a set of p-values. 
+# P-curve analysis helps determine whether a set of p-values reflects genuine statistical significance or might indicate questionable research practices.
+# I recommend to not change anything in the P-curve Analysis Function
+
+# Getting Started:
+# To use this script, you need to prepare your p-values in a CSV file. You can find an example file at:
+# https://github.com/TimKoenders/P-Curve-Analysis/blob/main/p_values.csv
+# Place your p-values in a column vector in this CSV file as done in the example either by handcoding or a web-scraping algorithm.
+# You may need to adapt (or skip) some of the cleaning steps depending the structure of your p_values.
+
+# Usage:
+# 1. Set your working directory to the folder where you want to store the analysis results and figures.
+# 2. Load your p-values from the CSV file and clean them.
+# 3. Run the P-curve analysis.
+
+# This script generates various text files with the results in table format and saves figures as .PNG files in the same folder as your output file.
 
 
-# Clean_up and packages ------------------------------------------------------------------
+# Clean up, packages and working directory-------------
+
 rm(list = ls())
 gc()
 
@@ -15,18 +31,18 @@ pacman::p_load(
   dplyr,
   stringr,
   poibin,
-  scales
+  scales,
+  ggplot2
 )
 
-
-# Set your working directory ----------------------------------------------
+# Set your working directory:
 setwd("C:\\Users\\koend\\OneDrive\\Bureaublad\\WU 2023-2024\\Institute_Cognition\\P-curve analysis\\Routput")
 
 
-# Create data for p-curve analysis ------------------------------------------------------------
-# load the file with the p_values from python
+
+# Load and clean your p-values data ---------------------------------------
+# Load the file with the p-values from Python (or hand-coded)
 df <- read_csv("p_values.csv")
-# double check p-values who are over multiple lines
 
 # Clean p-values
 d <- df %>%
@@ -39,17 +55,19 @@ d <- df %>%
 p_values_vector <- d$p_value
 p_values_df <- data.frame(p_value = p_values_vector)
 
-# Generate the output filename 
-output_filename <- "p_curve_analysis"
 
+# P-curve Analysis Function -----------------------------------------------------
+# This function performs P-curve analysis with a given set of p-values.
+# It calculates various statistics and generates plots.
+# Arguments:
+#   p_values_vector: A vector of p-values.
 
-# P_curve analysis --------------------------------------------------------
-# Function to perform p-curve analysis with p-values as input
-pcurveAnalysis <- function(p_values_vector, filek= output_filename) {
+pcurveAnalysis <- function(p_values_vector) {
+  
   ksig <- length(p_values_vector)  # Total number of p-values
   khalf <- 0  # Number of p-values in the range [0.025, 0.05] (modify this if needed)
   
-  # Define functions for calculations
+  # Define a helper function for calculations
   prop33 <- function(p) {
     return(p_values_vector <= p)
   }
@@ -58,10 +76,6 @@ pcurveAnalysis <- function(p_values_vector, filek= output_filename) {
   hat <- mean(p_values_vector <= 0.05)
   power.ci.lb <- hat - 1.96 * sqrt(hat * (1 - hat) / ksig)
   power.ci.ub <- hat + 1.96 * sqrt(hat * (1 - hat) / ksig)
-  
-  # Save power estimate and confidence intervals to a text file
-  power_results <- c(power.ci.lb, hat, power.ci.ub)
-  write(power_results, paste("POWERHAT_", filek, ".txt", sep = ""), sep = "\n")
   
   # Calculate expected p-curve for 33% power
   gcdf1 <- prop33(0.01)
@@ -86,7 +100,7 @@ pcurveAnalysis <- function(p_values_vector, filek= output_filename) {
   red <- c(20, 20, 20, 20, 20)
   
   # Create the plot
-  png(filename = paste(filek, ".png", sep = ""), width = 2600, height = 2400, res = 400)
+  png(filename = "pcurve_plot.png", width = 2600, height = 2400, res = 400)
   x <- c(0.01, 0.02, 0.03, 0.04, 0.05)
   par(mar = c(6, 5.5, 1.5, 3))
   moveup <- max(max(blue[2:5]) - 66, 0)
@@ -106,14 +120,15 @@ pcurveAnalysis <- function(p_values_vector, filek= output_filename) {
   text(x + 0.00075, blue + 3.5, scales::percent(round(blue) / 100), col = 'black', cex = 0.75)
   lines(x, red, type = 'l', col = 'firebrick2', lwd = 1.5, lty = 3)
   lines(x, green, type = 'l', col = 'springgreen4', lwd = 1.5, lty = 5)
+  
   tab1 = 0.017
   tab2 = tab1 + 0.0015
   gap1 = 9
   gap2 = 4
   font.col = 'gray44'
-  text.blue = paste0("Power estimate: ", percent(hat), ", CI(",
-                     percent(power.ci.lb), ",",
-                     percent(power.ci.ub), ")")
+  text.blue = paste0("Power estimate: ", scales::percent(hat), ", CI(",
+                     scales::percent(power.ci.lb), ",",
+                     scales::percent(power.ci.ub), ")")
   text(tab1, legend.top, adj = 0, cex = 0.85, bquote("Observed " * italic(p) * "-curve"))
   text(tab2, legend.top - gap2, adj = 0, cex = 0.68, text.blue, col = font.col)
   text.red = bquote("Null of no effect: " * italic(p))
@@ -138,12 +153,12 @@ pcurveAnalysis <- function(p_values_vector, filek= output_filename) {
   
   # Save p-value calculations to text files
   table_calc = data.frame(p_value = p_values_vector, observed_p_curve = p_values_vector <= 0.05)
-  write.table(table_calc, sep = "\t", row.names = FALSE, file = paste("Calculations_", filek, ".txt", sep = ""))
+  write.table(table_calc, sep = "\t", row.names = FALSE, file = "Calculations.txt")
   
   # Save results behind p-curve figure
   headers2 = c("p-value", "Observed (blue)", "Power 33% (Green)", "Null of no effect (Red)")
   table_figure = data.frame(x, blue, green, red)
-  write.table(table_figure, sep = "\t", row.names = FALSE, file = paste("FigNumbers_", filek, ".txt", sep = ""))
+  write.table(table_figure, sep = "\t", row.names = FALSE, file = "FigNumbers.txt")
   
   # Cumulative p-curves
   dropk = function(pp, k, droplow) {
@@ -186,7 +201,7 @@ pcurveAnalysis <- function(p_values_vector, filek= output_filename) {
     axis(1, c(0:(k - 1)), las = 1, cex.axis = 1.4)
   }
   
-  png(filename = paste(filek, "_cumulative.png", sep = ""), width = 4000, height = 4000, res = 400)
+  png(filename = "cumulative_plot.png", width = 4000, height = 4000, res = 400)
   
   par(mfrow = c(3, 2), mar = c(4, 3, 0, 2), mgp = c(2.5, 1, 0), oma = c(5, 14, 5, 1))
   
@@ -216,4 +231,12 @@ pcurveAnalysis <- function(p_values_vector, filek= output_filename) {
   
   dev.off()
 }
-pcurveAnalysis(p_values_vector, filek= output_filename)
+
+
+
+
+
+# Perform P-curve analysis ------------------------------------------------
+pcurveAnalysis(p_values_vector)
+
+
